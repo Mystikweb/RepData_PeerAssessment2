@@ -1,5 +1,6 @@
 ---
-title: "Peer Assessment"
+title: "Impact of Severe Weather Events in the U.S."
+subtitle: "Coursera Reproducible Research Peer Assessment 2"
 author: "Christopher Hair"
 date: "June 24, 2017"
 output: html_document
@@ -9,22 +10,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Abstract
+When exploring changes to a population's health and economy, one of the reasons a change occurs can be due to a severe weather event. In this article, we examine the affects different types of weather events in the United States. We will look at the total number of injuries and fatalities along with the total cost of damages incurred due to the different types of weather events and determine which type has had the greatest overall impact. The information used for the evaluation comes from data collected by the U.S. National Oceanic and Atmospheric Administration (NOAA) between 1950 and 2011.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Data Analysis
