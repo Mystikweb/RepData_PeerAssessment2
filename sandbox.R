@@ -8,6 +8,8 @@ if (!exists("raw_data")) {
 }
 
 library(dplyr)
+library(tidyr)
+library(ggplot2)
 
 event_injuries <- raw_data %>%
     group_by(EVTYPE) %>%
@@ -39,9 +41,14 @@ health_data <- event_injuries %>%
                (avg_fatalities > 1 & avg_injuries != 0)) %>%
     filter(avg_injuries != total_injuries & 
                avg_fatalities != total_fatalities) %>%
-    mutate(total_health_related = total_injuries + total_fatalities) %>%
     select(event_type, 
            total_events, 
            total_injuries, 
-           total_fatalities, 
-           total_health_related)
+           total_fatalities)
+
+health_long <- gather(health_data, health_type, total_amount, total_injuries:total_fatalities, factor_key = TRUE)
+
+health_plot <- ggplot(health_long, aes(x = event_type, y = total_amount, fill=health_type)) +
+    geom_bar(stat = "identity")
+
+print(health_plot)

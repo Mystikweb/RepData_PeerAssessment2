@@ -131,6 +131,11 @@ $(document).ready(function () {
 </div>
 <div id="data-processing" class="section level2">
 <h2>Data Processing</h2>
+<div id="importing-packages" class="section level3">
+<h3>Importing Packages</h3>
+<pre class="r"><code>library(dplyr)
+library(huxtable)</code></pre>
+</div>
 <div id="preparing-the-data" class="section level3">
 <h3>Preparing The Data</h3>
 <p>The snapshot data file for this course is located in the repository’s “data” folder as a CSV file compressed using the bzip2 algoritm. To start analyzing the information we need load the data into the environment and look at the structure.</p>
@@ -217,6 +222,118 @@ str(raw_data)</code></pre>
 </tr>
 </tbody>
 </table>
+</div>
+<div id="impact-on-health" class="section level3">
+<h3>Impact on Health</h3>
+<p>Using the required variables we can analyze the total injuries and fatalities to determine what types of severe weather events have had the greatest impact on the United States. For both the number of injuries and the number of fatalities by event type we can perform the following operations:</p>
+<ol style="list-style-type: decimal">
+<li>Group the raw data by the type of event</li>
+<li>Get the total number of events for each type of event</li>
+<li>Get the average amount the variable that was reported</li>
+<li>Get the total amount of the variable that was reported</li>
+<li>Limit the results to any events that have been reported more than 100 times</li>
+</ol>
+<p>Once the previous operations are performed for both the injuries and the fatalities we can combine both datasets and reduce the results even more using the rules listed below and calculating the total amounts.</p>
+<ol style="list-style-type: decimal">
+<li>Take only results that have an average amount of each variable is more than 1</li>
+<li>The total amount of each variable is not the same as the average amount of each variable</li>
+</ol>
+<pre class="r"><code>event_injuries &lt;- raw_data %&gt;%
+    group_by(EVTYPE) %&gt;%
+    summarise(total_events = n(),
+              avg_injuries = mean(INJURIES),
+              total_injuries = sum(INJURIES)) %&gt;%
+    filter(total_events &gt; 100) %&gt;%
+    select(event_type = EVTYPE, 
+           total_events, 
+           avg_injuries, 
+           total_injuries)
+
+event_fatalities &lt;- raw_data %&gt;%
+    group_by(EVTYPE) %&gt;%
+    summarise(total_events = n(),
+              avg_fatalities = mean(FATALITIES),
+              total_fatalities = sum(FATALITIES)) %&gt;%
+    filter(total_events &gt; 100) %&gt;%
+    select(event_type = EVTYPE, 
+           total_events, 
+           avg_fatalities, 
+           total_fatalities)
+
+health_data &lt;- event_injuries %&gt;%
+    inner_join(event_fatalities) %&gt;%
+    filter((avg_injuries &gt; 1 &amp; avg_fatalities != 0) | 
+               (avg_fatalities &gt; 1 &amp; avg_injuries != 0)) %&gt;%
+    filter(avg_injuries != total_injuries &amp; 
+               avg_fatalities != total_fatalities) %&gt;%
+    select(event_type, 
+           total_events, 
+           total_injuries, 
+           total_fatalities)</code></pre>
+</div>
+<div id="health-related-totals" class="section level3">
+<h3>Health Related Totals</h3>
+<p>Using this data we can get the total number of injuries and fatalities for each of the combined events.</p>
+<pre class="r"><code>health_table &lt;- as_hux(health_data %&gt;% 
+                       mutate(total_health_related = total_injuries + total_fatalities) %&gt;%
+                       arrange(desc(total_health_related)) %&gt;%
+                       select(&quot;Event Type&quot; = event_type, 
+                              &quot;Total Events&quot; = total_events, 
+                              &quot;Total Injuries&quot; = total_injuries, 
+                              &quot;Total Fatalities&quot; = total_fatalities, 
+                              &quot;Total Related&quot; = total_health_related)
+                       , add_colnames = TRUE) %&gt;%
+    set_bold(1,,TRUE) %&gt;%
+    set_all_borders(,,1) %&gt;%
+    set_align(,2:ncol(health_data),&quot;center&quot;)
+
+number_format(health_table) &lt;- 0
+health_table</code></pre>
+<table class="huxtable" style="border-collapse: collapse; width: 50%; margin-left: auto; margin-right: auto;">
+<col style="width: NA;"><col style="width: NA;"><col style="width: NA;"><col style="width: NA;"><col style="width: NA;"><tr>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; "><span style="font-weight: bold; ">Event Type</span></td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; "><span style="font-weight: bold; ">Total Events</span></td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; "><span style="font-weight: bold; ">Total Injuries</span></td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; "><span style="font-weight: bold; ">Total Fatalities</span></td>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; "><span style="font-weight: bold; ">Total Related</span></td>
+</tr>
+<tr>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">TORNADO</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">60652</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">91346</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">5633</td>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">96979</td>
+</tr>
+<tr>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">EXCESSIVE HEAT</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">1678</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">6525</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">1903</td>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">8428</td>
+</tr>
+<tr>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">HEAT</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">767</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">2100</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">937</td>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">3037</td>
+</tr>
+<tr>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">FOG</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">538</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">734</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">62</td>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">796</td>
+</tr>
+<tr>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">DUST STORM</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">427</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">440</td>
+  <td  style="vertical-align: top; text-align: center; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">22</td>
+  <td  style="vertical-align: top; text-align: left; white-space: nowrap; border-width:1px 1px 1px 1px; border-style: solid; border-top-color: NA;  border-right-color: NA;  border-bottom-color: NA;  border-left-color: NA; padding: 4pt 4pt 4pt 4pt; ">462</td>
+</tr>
+</table>
+
 </div>
 </div>
 
