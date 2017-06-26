@@ -17,6 +17,8 @@ As part of the [Coursera Reproducible Research Course](https://www.coursera.org/
 ### Importing Packages
 ```{r package_import, message=FALSE}
 library(dplyr)
+library(tidyr)
+library(ggplot2)
 library(huxtable)
 ```
 ### Preparing The Data
@@ -106,4 +108,21 @@ health_table <- as_hux(health_data %>%
 number_format(health_table) <- 0
 health_table
 ```
-And of we visualize those totals in a plot we see a large difference between tornados and other types of events.
+And if we visualize those totals in a plot, we see a large difference between tornados and other types of events.
+```{r health_plot, results="asis"}
+health_long <- gather(health_data, 
+                      health_type, 
+                      total_amount, 
+                      total_injuries:total_fatalities, 
+                      factor_key = TRUE)
+
+health_plot <- ggplot(health_long, aes(x = event_type, y = total_amount, fill=health_type)) +
+    geom_bar(stat = "identity") +
+    scale_fill_discrete(name = "Incident",
+                        breaks = c("total_injuries", "total_fatalities"),
+                        labels = c("Injuries", "Fatalities")) +
+    xlab("Event Type") +
+    ylab("Total Amount")
+
+print(health_plot)
+```
