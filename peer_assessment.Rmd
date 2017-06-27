@@ -2,7 +2,7 @@
 title: "Impact of Severe Weather Events in the U.S."
 subtitle: "Coursera Reproducible Research Peer Assessment 2"
 author: "Christopher Hair"
-date: "June 24, 2017"
+date: "June 27, 2017"
 output: html_document
 ---
 
@@ -22,7 +22,7 @@ library(ggplot2)
 library(huxtable)
 ```
 ### Preparing The Data
-The snapshot data file for this course is located in the repository's "data" folder as a CSV file compressed using the bzip2 algoritm. To start analyzing the information we need load the data into the environment and look at the structure.
+The snapshot data file for this course is located in the repository's "data" folder as a CSV file compressed using the bzip2 algorithm. To start analyzing the information we need load the data into the environment and look at the structure.
 ```{r data_read, cache=TRUE}
 raw_data <- read.csv("data/repdata_data_StormData.csv.bz2")
 str(raw_data)
@@ -32,15 +32,15 @@ From the structure of the data we can determine that the following variables are
 Variable    | Description
 ------------|--------------------------------------------------------------------
 EVTYPE      | The weather event type
-FATALITIES  | The number of fatlaities due to the event
-INJURIES    | The number of injuries dure to the event
+FATALITIES  | The number of fatalities due to the event
+INJURIES    | The number of injuries due to the event
 PROPDMG     | The amount of property damages due to the event
 PROPDMGEXP  | The exponential amount of the property damage (i.e. M is millions)
 CROPDMG     | The amount of crop damages due to the event
 CROPDMGEXP  | The exponential amount of the crop damage (i.e. K is thousands)
 
 
-### Impact on Health
+### Analyzing the Impact on Health
 Using the required variables we can analyze the total injuries and fatalities to determine what types of severe weather events have had the greatest impact on the United States. For both the number of injuries and the number of fatalities by event type we can perform the following operations:
 
 1. Group the raw data by the type of event
@@ -49,7 +49,7 @@ Using the required variables we can analyze the total injuries and fatalities to
 4. Get the total amount of the variable that was reported
 5. Limit the results to any events that have been reported more than 100 times
 
-Once the previous operations are performed for both the injuries and the fatalities we can combine both datasets and reduce the results even more using the rules listed below and calculating the total amounts.
+Once the previous operations are performed for both the injuries and the fatalities we can combine both data sets and reduce the results even more using the rules listed below and calculating the total amounts.
 
 1. Take only results that have an average amount of each variable is more than 1
 2. The total amount of each variable is not the same as the average amount of each variable
@@ -88,41 +88,170 @@ health_data <- event_injuries %>%
            total_injuries, 
            total_fatalities)
 ```
-
-### Health Related Totals
-Using this data we can get the total number of injuries and fatalities for each of the combined events. This shows that tornados have the highest rate of injuries and fatalities of the other events.
+Using these results, we can get the total number of injuries and fatalities for each of the combined events. This shows that tornadoes have the highest rate of injuries and fatalities of the other events.
 ```{r health_table}
-health_table <- as_hux(health_data %>% 
-                       mutate(total_health_related = total_injuries + total_fatalities) %>%
-                       arrange(desc(total_health_related)) %>%
-                       select("Event Type" = event_type, 
-                              "Total Events" = total_events, 
-                              "Total Injuries" = total_injuries, 
-                              "Total Fatalities" = total_fatalities, 
-                              "Total Related" = total_health_related)
-                       , add_colnames = TRUE) %>%
-    set_bold(1,,TRUE) %>%
-    set_all_borders(,,1) %>%
-	set_align(,2:ncol(health_data),"center")
-
-number_format(health_table) <- 0
-health_table
+as_hux(health_data %>%
+           mutate(total_health_related = total_injuries + total_fatalities) %>%
+           arrange(desc(total_health_related)) %>%
+           select("Event Type" = event_type,
+                  "Total Events" = total_events,
+                  "Total Injuries" = total_injuries,
+                  "Total Fatalities" = total_fatalities,
+                  "Total Related" = total_health_related)
+       , add_colnames = TRUE) %>%
+    set_bold(1, , TRUE) %>%
+    set_all_borders(, , 1) %>%
+    set_align(, 2:(ncol(health_data) + 1), "center") %>%
+    set_number_format(0)
 ```
-And if we visualize those totals in a plot, we see a large difference between tornados and other types of events.
-```{r health_plot, results="asis"}
+
+\newline  \newline
+
+And if we visualize these totals in a plot, we see a large difference between tornadoes and other types of events.
+```{r health_plot, fig.align='center', results="asis"}
 health_long <- gather(health_data, 
                       health_type, 
                       total_amount, 
                       total_injuries:total_fatalities, 
                       factor_key = TRUE)
 
-health_plot <- ggplot(health_long, aes(x = event_type, y = total_amount, fill=health_type)) +
+ggplot(health_long, aes(x = event_type, y = total_amount, fill=health_type)) +
     geom_bar(stat = "identity") +
     scale_fill_discrete(name = "Incident",
                         breaks = c("total_injuries", "total_fatalities"),
                         labels = c("Injuries", "Fatalities")) +
     xlab("Event Type") +
     ylab("Total Amount")
-
-print(health_plot)
 ```
+
+### Analyzing the Impact on Economy
+Using the required variables we can analyze the cost of both property and crop related damages and find the totals. We can use a similar approach to the health related data accept we have another column related to exponential size of the related value. We can see below the breakdown of the possible exponential values for both the property and crop related values.
+
+#### Property Related Exponential Values
+```{r prop_exp_breakdowns}
+levels(raw_data$PROPDMGEXP)
+```
+#### Crop Related Exponential Values
+```{r crop_exp_breakdowns}
+levels(raw_data$CROPDMGEXP)
+```
+
+*NOTE* Because there was no formal code book associated with the data file, we will make the following assumptions before performing the analysis.
+
+Exponential value of "H" or "h"
+:   The associated amount will be multiplied by 100
+
+Exponential value of "K" or "k"
+:   The associated amount will be multiplied by 1000
+
+Exponential value of "M" or "m"
+:   The associated amount will be multiplied by 1000000
+
+Exponential value of "B" or "b"
+:   The associated amount will be multiplied by 1000000000
+
+Exponential values that aren't classified above
+:   The associated amount will be multiplied by 1
+
+With all of the assumptions in place we can now process the data for analysis. For both the crop and property related values we can perform the following operations:
+
+1. Use only values above 0
+2. Change the exponential variable to uppercase to simplify calculating the total actual value
+3. Add a new variable to hold the newly calculated value of damages based on the classification of the exponential rules
+4. Group the results by the event type
+5. Get the number of events for each event type
+6. Get the total amount of damages incurred
+7, Use only results where the number of events is more than 100
+8. Take the event type, the total number of events and the total damages incurred
+
+After we have broken down the data by either the property related or the crop related damages we can perform the rest of the calculations to get the final results. Because we are looking for the events that have the greatest impact we will take only the top five events.
+
+1. Combine both the property and crop related results by event type
+2. Add a new variable to the results for the total number of events
+3. Add a new variable to the results for the toal amount of damages
+4. Order the results by the highest total amount of damages
+5. Select only the top 5 results
+
+```{r build_economy_data, message=FALSE}
+property_data <- raw_data %>%
+    filter(PROPDMG > 0) %>%
+    mutate_at(vars(PROPDMGEXP), funs(toupper)) %>%
+    mutate(property_dmg = case_when(
+        .$PROPDMGEXP == "H" ~ .$PROPDMG * 100,
+        .$PROPDMGEXP == "K" ~ .$PROPDMG * 1000,
+        .$PROPDMGEXP == "M" ~ .$PROPDMG * 1000000,
+        .$PROPDMGEXP == "B" ~ .$PROPDMG * 1000000000,
+        TRUE ~ .$PROPDMG * 1
+    )) %>%
+    group_by(EVTYPE) %>%
+    summarise(property_events = n(),
+              total_property_dmg = sum(property_dmg)) %>%
+    filter(property_events > 100) %>%
+    select(event_type = EVTYPE, 
+           property_events,
+           total_property_dmg)
+
+crop_data <- raw_data %>%
+    filter(CROPDMG > 0) %>%
+    mutate_at(vars(CROPDMGEXP), funs(toupper)) %>%
+    mutate(crop_dmg = case_when(
+        .$CROPDMGEXP == "H" ~ .$CROPDMG * 100,
+        .$CROPDMGEXP == "K" ~ .$CROPDMG * 1000,
+        .$CROPDMGEXP == "M" ~ .$CROPDMG * 1000000,
+        .$CROPDMGEXP == "B" ~ .$CROPDMG * 1000000000,
+        TRUE ~ .$CROPDMG * 1
+    )) %>%
+    group_by(EVTYPE) %>%
+    summarise(crop_events = n(),
+              total_crop_dmg = sum(crop_dmg)) %>%
+    filter(crop_events > 100) %>%
+    select(event_type = EVTYPE,
+           crop_events,
+           total_crop_dmg)
+
+economy_data <- property_data %>%
+    inner_join(crop_data, by = c("event_type")) %>%
+    mutate(total_damages = total_property_dmg + total_crop_dmg,
+           total_events = property_events + crop_events) %>%
+    arrange(desc(total_damages)) %>%
+    top_n(5)
+```
+
+Using these results we can look at the total amount of damages incurred in a tabular format. We can see below that tornadoes has generated the most total damages.
+```{r economy_table}
+as_hux(economy_data %>%
+           select("Event Type" = event_type,
+                  "Crop Events" = crop_events,
+                  "Crop Damages" = total_crop_dmg,
+                  "Property Events" = property_events,
+                  "Property Damages" = total_property_dmg,
+                  "Number of Events" = total_events,
+                  "Total Damages" = total_damages)
+       , add_colnames = TRUE) %>%
+    set_bold(1, , TRUE) %>%
+    set_all_borders(, , 1) %>%
+    set_align(, 2:ncol(economy_data), "center") %>%
+    set_number_format(0)
+```
+
+\newline  \newline
+
+And if we visualize these totals in a plot, we see a large difference between tornadoes and other types of events.
+```{r economy_plot, fig.align='center', results="asis"}
+economy_long <- gather(economy_data, 
+                       dmg_type, 
+                       total_dmgs, 
+                       total_property_dmg:total_crop_dmg, 
+                       factor_key = TRUE)
+
+ggplot(economy_long, aes(x = event_type, y = total_dmgs, fill=dmg_type)) +
+    geom_bar(stat = "identity") +
+    scale_fill_discrete(name = "Type",
+                        breaks = c("total_property_dmg", "total_crop_dmg"),
+                        labels = c("Property", "Crop")) +
+    xlab("Event Type") +
+    ylab("Total Damages")
+```
+
+## Results
+To summarize, in this article we were tasked through our project to analyze the effects different types of severe weather events have had on the United States. We used a snapshot of data collected by the U.S. National Oceanic and Atmospheric Administration (NOAA) between 1950 and 2011. After analyzing the information related to the total number of injuries and fatalites along with the total amount of damages incurred to property and crops we were able to conclude the result. The severe weather event that has had the largest impact on both the health and economy of the United States have been tornadoes, and in both cases tornadoes have caused a much higher results than any other type of severe weather event. 
